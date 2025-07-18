@@ -10,6 +10,7 @@ import Form from "./components/Form";
 import Button from "./components/Button";
 import Preview from "./components/Preview";
 import Firestore from "./handlers/firestore";
+import Cloudinary from "./handlers/cloudinary";
 
 const players = [
   "https://ichef.bbci.co.uk/ace/standard/2560/cpsprodpb/0b6d/live/c3931d50-60de-11f0-bfe6-55783cb3c7cd.jpg",
@@ -49,17 +50,21 @@ function App() {
   const handleAddPhoto = async (e) => {
     e.preventDefault();
     if (formData.title && formData.file) {
-      const newPhoto = {
-        id: Date.now(),
-        title: formData.title,
-        url: URL.createObjectURL(formData.file),
-        fileName: formData.file.name,
-        fileSize: formData.file.size,
-        timestamp: Date.now()
-      };
-      
       try {
-        // Save to Firestore
+        // Upload image to Cloudinary first
+        const downloadURL = await Cloudinary.uploadImage(formData.file);
+        console.log("Image uploaded to Cloudinary:", downloadURL);
+        
+        const newPhoto = {
+          id: Date.now(),
+          title: formData.title,
+          url: downloadURL, // Use the Cloudinary URL
+          fileName: formData.file.name,
+          fileSize: formData.file.size,
+          timestamp: Date.now()
+        };
+        
+        // Save to Firestore with the Cloudinary URL
         await Firestore.writeDoc(newPhoto, "photos");
         console.log("Photo saved to database successfully!");
         
@@ -68,8 +73,8 @@ function App() {
         setFormData({ title: "", file: null });
         setShowForm(false);
       } catch (error) {
-        console.error("Error saving to database:", error);
-        alert("Error saving photo to database. Please try again.");
+        console.error("Error saving photo:", error);
+        alert("Error saving photo. Please try again.");
       }
     }
   };
